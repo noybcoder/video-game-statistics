@@ -1,0 +1,20 @@
+GAME_DATA = {
+    'games': {
+        'fields': [
+            'id', 'name', 'aggregated_rating', 'aggregated_rating_count', 'rating', 'rating_count', 'total_rating', 
+        'total_rating_count', 'first_release_date', 'game_type', 'genres', 'game_engines', 'platforms'
+        ],
+    },
+    'genres': {
+        'fields': ['id', 'name'],
+    },
+    'platforms': {
+        'fields': ['id', 'name'],
+    },
+    'game_engines': {
+        'fields': ['id', 'name'],
+    },
+    'companies': {
+        'fields': ['id', 'name'],
+    }
+}
