@@ -1,6 +1,7 @@
 from requests import post
 from datetime import datetime, timezone
 from data_structure import GAME_DATA
+from requests.exceptions import HTTPError, JSONDecodeError
 import json, time, os
 
 def get_timestamp(year: int, month: int, day: int):
@@ -26,12 +27,21 @@ def get_game_data(fields: list, limit: int=500, entity_name: str='games', year: 
 
     while True:
         query = get_query(last_id, fields, limit, entity_name, year, month, day)
-        
-        response = post(
-            f'https://api.igdb.com/v4/{entity_name}', 
-            **{'headers': credentials, 'data': query})
 
-        game_data = response.json()
+        try:
+            response = post(
+                f'https://api.igdb.com/v2/{entity_name}', 
+                **{'headers': credentials, 'data': query})
+            response.raise_for_status()
+        except HTTPError as err:
+            print(err)
+            return master_responses
+
+        try:
+            game_data = response.json()
+        except JSONDecodeError as err:
+            print(err)
+            return master_responses
 
         if not game_data:
             print("No more response.")
@@ -65,6 +75,10 @@ def get_output_data(data, entity_name):
 def save_as_json(data, entity_name, output_folder='data/landing'):
     filename = get_file_name(entity_name, output_folder)
     data = get_output_data(data, entity_name)
+
+    if not data['data']:
+        print(f'No data retrieved for "{entity_name}"')
+        return
     
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
