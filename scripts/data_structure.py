@@ -15,6 +15,6 @@ GAME_DATA = {
         'fields': ['id', 'name'],
     },
     'companies': {
-        'fields': ['id', 'name'],
+        'fields': ['id', 'name', 'developed', 'published'],
     }
 }

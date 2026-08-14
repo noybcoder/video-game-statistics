@@ -30,7 +30,7 @@ def get_game_data(fields: list, limit: int=500, entity_name: str='games', year: 
 
         try:
             response = post(
-                f'https://api.igdb.com/v2/{entity_name}', 
+                f'https://api.igdb.com/v4/{entity_name}', 
                 **{'headers': credentials, 'data': query})
             response.raise_for_status()
         except HTTPError as err:
