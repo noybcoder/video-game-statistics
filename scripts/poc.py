@@ -1,6 +1,6 @@
 import duckdb, os
 import numpy as np
-import inflect, functools, pycountry
+import inflect, functools, pycountry, inspect
 
 path = os.path.join(os.getcwd(), 'data/landing/companies_raw_2026-08-19_09-21-15.json')
 conn = duckdb.connect()
@@ -31,13 +31,16 @@ def get_singular_entity_name(attribute: str) -> str:
     
 def create_direct_link_table(func):
     @functools.wraps(func)
-    def wrappper_add_query(conn, entity_name, path):
+    def wrappper_add_query(conn, entity_name: str, path: str):
+
+        param = func(conn) if 'conn' in inspect.signature(func).parameters else func()
+
         conn.execute(f"""
             CREATE OR REPLACE TABLE {entity_name} AS 
                 SELECT
                     CAST(d.data ->> 'id' AS INTEGER) AS id,
                     d.data ->> 'name' AS name,
-                    {func(conn)}
+                    {param}
                 FROM read_json($path, maximum_object_size=60000000) AS g
                 CROSS JOIN UNNEST(g.data) AS d(data) 
         """, {'path': path})
@@ -73,6 +76,10 @@ def create_company_table(conn):
         get_country_name(country_code) AS country
     """
 
+@create_direct_link_table
+def create_generic_table():
+    return ''
+
 def get_country_name(country_code: int) -> str | None:
     try:
         country = pycountry.countries.get(numeric=str(country_code).zfill(3))
@@ -81,5 +88,5 @@ def get_country_name(country_code: int) -> str | None:
         print(f'The country code "{country_code}" is not valid.')
         return None
 
-add_company_data = create_company_table(conn, entity_name, path)
-add_company_data.show()
+add_generic_data = create_company_table(conn, entity_name, path)
+add_generic_data.show()
