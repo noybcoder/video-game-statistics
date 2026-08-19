@@ -1,11 +1,11 @@
 import duckdb, os
 import numpy as np
-import inflect, functools
+import inflect, functools, pycountry
 
-path = os.path.join(os.getcwd(), 'data/landing/games_raw_2026-08-14_14-54-44.json')
+path = os.path.join(os.getcwd(), 'data/landing/companies_raw_2026-08-19_09-21-15.json')
 conn = duckdb.connect()
 
-entity_name = 'games'
+entity_name = 'companies'
 
 first_primary_key = 'companies'
 second_primary_key = 'published'
@@ -28,36 +28,25 @@ def get_singular_entity_name(attribute: str) -> str:
     if singular:
         return f'{singular}_id'
     return f'{attribute}_id'
-
-
-def get_base_query(entity_name: str):
-    return f"""
-        CREATE OR REPLACE TABLE {entity_name} AS 
-            SELECT
-                CAST(d.data ->> 'id' AS INTEGER) AS id,
-                d.data ->> 'name' AS name,
-    """
-
-def get_end_query():
-    return f"""
-        FROM read_json($path, maximum_object_size=60000000) AS g
-        CROSS JOIN UNNEST(g.data) AS d(data)
-    """
     
 def create_direct_link_table(func):
     @functools.wraps(func)
     def wrappper_add_query(conn, entity_name, path):
-        query = get_base_query(entity_name)     
-        query += func()
-        query += get_end_query()
-
-        conn.execute(query, {'path': path})
+        conn.execute(f"""
+            CREATE OR REPLACE TABLE {entity_name} AS 
+                SELECT
+                    CAST(d.data ->> 'id' AS INTEGER) AS id,
+                    d.data ->> 'name' AS name,
+                    {func(conn)}
+                FROM read_json($path, maximum_object_size=60000000) AS g
+                CROSS JOIN UNNEST(g.data) AS d(data) 
+        """, {'path': path})
 
         return conn.table(entity_name)
     return wrappper_add_query
 
 @create_direct_link_table
-def add_game_attributes():
+def create_game_table():
     return f"""
         TO_TIMESTAMP(CAST(d.data ->> 'first_release_date' AS BIGINT))::DATE AS release_date,
         YEAR(release_date) AS release_year,
@@ -74,10 +63,23 @@ def add_game_attributes():
     """
 
 @create_direct_link_table
-def add_company_attributes():
+def create_company_table(conn):
+    conn.create_function("get_country_name", get_country_name, ["INTEGER"], "VARCHAR")
+
     return f"""
         CAST(d.data ->> 'developed' AS INTEGER[]) AS game_developed,
-        CAST(d.data ->> 'published' AS INTEGER[]) AS game_published
+        CAST(d.data ->> 'published' AS INTEGER[]) AS game_published,
+        CAST(d.data ->> 'country' AS INTEGER) AS country_code,
+        get_country_name(country_code) AS country
     """
 
-add_game_attributes(conn, entity_name, path).show()
+def get_country_name(country_code: int) -> str | None:
+    try:
+        country = pycountry.countries.get(numeric=str(country_code).zfill(3))
+        return country.name
+    except(AttributeError):
+        print(f'The country code "{country_code}" is not valid.')
+        return None
+
+add_company_data = create_company_table(conn, entity_name, path)
+add_company_data.show()
