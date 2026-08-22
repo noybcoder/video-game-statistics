@@ -1,4 +1,4 @@
-import duckdb, os
+import duckdb, os, re
 import numpy as np
 import inflect, functools, pycountry, inspect
 
@@ -10,7 +10,11 @@ entity_name = 'companies'
 first_primary_key = 'companies'
 second_primary_key = 'published'
 
-def create_junction_table(conn, first_primary_key: str, second_primary_key: str):
+def get_latest_file(file_path, entity_name):
+    files = [os.path.join(file_path, file) for file in os.listdir(file_path) if re.match(f'{entity_name}_raw.*json', file)]
+    return max(files, key=os.path.getctime)
+
+def create_junction_table(conn: duckdb.DuckDBPyConnection, first_primary_key: str, second_primary_key: str):
     table_name = f'{first_primary_key}_{second_primary_key}'
     conn.execute(f"""
         CREATE OR REPLACE TABLE {table_name} AS
@@ -31,7 +35,7 @@ def get_singular_entity_name(attribute: str) -> str:
     
 def create_direct_link_table(func):
     @functools.wraps(func)
-    def wrappper_add_query(conn, entity_name: str, path: str):
+    def wrappper_add_query(conn: duckdb.DuckDBPyConnection, entity_name: str, path: str):
 
         param = func(conn) if 'conn' in inspect.signature(func).parameters else func()
 
@@ -66,7 +70,7 @@ def create_game_table():
     """
 
 @create_direct_link_table
-def create_company_table(conn):
+def create_company_table(conn: duckdb.DuckDBPyConnection):
     conn.create_function("get_country_name", get_country_name, ["INTEGER"], "VARCHAR")
 
     return f"""
@@ -88,5 +92,8 @@ def get_country_name(country_code: int) -> str | None:
         print(f'The country code "{country_code}" is not valid.')
         return None
 
-add_generic_data = create_company_table(conn, entity_name, path)
-add_generic_data.show()
+# add_generic_data = create_company_table(conn, entity_name, path)
+# add_generic_data.show()
+
+LANDING_DIR = os.path.join(os.getcwd(), 'data/landing')
+print(type(conn.table()))
