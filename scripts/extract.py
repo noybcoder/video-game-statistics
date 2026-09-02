@@ -7,6 +7,9 @@ import json, time, os, sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from config.settings import Settings
+
+
 load_dotenv()
 
 def get_query(last_id: int, fields: list, limit: int=500, entity_name: str='games', year: int=2011, month: int=1, day: int=1):
@@ -25,10 +28,7 @@ def get_game_data(fields: list, limit: int=500, entity_name: str='games', year: 
     master_responses = []
     last_id = 0
 
-    client_id = os.getenv('IGDB_CLIENT_ID')
-    access_token = os.getenv('IGDB_ACCESS_TOKEN')
-
-    credentials = {'Client-ID': client_id, 'Authorization': f'Bearer {access_token}'}
+    settings = Settings()
 
     while True:
         query = get_query(last_id, fields, limit, entity_name, year, month, day)
@@ -36,7 +36,7 @@ def get_game_data(fields: list, limit: int=500, entity_name: str='games', year: 
         try:
             response = post(
                 f'https://api.igdb.com/v4/{entity_name}', 
-                **{'headers': credentials, 'data': query})
+                **{'headers': settings.get_igdb_connection_credentials, 'data': query})
             response.raise_for_status()
         except HTTPError as err:
             print(err)

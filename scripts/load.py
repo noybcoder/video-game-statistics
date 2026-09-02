@@ -1,18 +1,19 @@
-import psycopg2, duckdb, os, functools, inspect
+import psycopg2, duckdb, os, functools, inspect, sys
 from dotenv import load_dotenv
 from utils import *
 
 load_dotenv()
 
-def format_config_parameter(db_config: dict) -> str:
-    return ' '.join([f'{k}={v}' for k, v in db_config.items()])
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+from config.settings import Settings
 
 def connect_to_database_for_data_upload(db_config: dict, database: str='video_games') -> duckdb.DuckDBPyConnection:
     conn = duckdb.connect()
     conn.execute('INSTALL POSTGRES;')
     conn.execute('LOAD POSTGRES;')
 
-    conn.execute(f"ATTACH '{format_config_parameter(db_config)}' AS {database} (TYPE postgres)")
+    conn.execute(f"ATTACH '{db_config}' AS {database} (TYPE postgres)")
     return conn
 
 def get_data_file(entity_name: str, path: str='data/silver') -> str:
@@ -110,8 +111,8 @@ def load_data_to_junction_table(conn: duckdb.DuckDBPyConnection, table_config: l
             ON a.{second_primary_key} = c.{second_primary_key}
     """, {'path': path})
 
-def connect_to_database_for_schema_creation() -> tuple :
-    conn = psycopg2.connect(**db_config)
+def connect_to_database_for_schema_creation(credentials) -> tuple :
+    conn = psycopg2.connect(**credentials)
     conn.autocommit = True
     cur = conn.cursor()
 
@@ -123,16 +124,10 @@ def close_connection_for_schema_creation(conn: psycopg2.extensions.connection, c
     conn.close()
 
 if __name__ == '__main__':
-    db_config = {
-        'host': os.getenv('POSTGRES_DATABASE_HOST'),
-        'port': os.getenv('POSTGRES_DATABASE_PORT'),
-        'user': os.getenv('POSTGRES_DATABASE_USER'),
-        'password': os.getenv('POSTGRES_DATABASE_PASSWORD'),
-        'dbname': os.getenv('POSTGRES_DATABASE_NAME')
-    }
+    settings = Settings()
 
-    schema_conn, cur = connect_to_database_for_schema_creation()
-    upload_conn = connect_to_database_for_data_upload(db_config)
+    schema_conn, cur = connect_to_database_for_schema_creation(settings.get_schema_creation_database_credentials)
+    upload_conn = connect_to_database_for_data_upload(settings.get_data_load_database_credentials)
 
     CONFIG_DIR = os.path.join(os.getcwd(), 'config')
     tables = sorted(get_table_structure(CONFIG_DIR, 'entity_names.json'), key=lambda x: x['type'])
