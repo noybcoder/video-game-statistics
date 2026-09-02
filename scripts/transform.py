@@ -1,5 +1,6 @@
 import duckdb, os, re, sys, functools, pycountry, inspect, json
 from utils import *
+from typing import Union
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
@@ -96,7 +97,7 @@ def get_latest_file(file_path: str, entity_name: str) -> str:
     except ValueError as e:
         print(f'Error: ${e}')
 
-def get_country_name(country_code: int) -> str | None:
+def get_country_name(country_code: int) -> Union[str, None]:
     try:
         country = pycountry.countries.get(numeric=str(country_code).zfill(3))
         return country.name

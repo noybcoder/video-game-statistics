@@ -138,9 +138,9 @@ if __name__ == '__main__':
     tables = sorted(get_table_structure(CONFIG_DIR, 'entity_names.json'), key=lambda x: x['type'])
 
     for table in tables:
-        path = os.path.join(os.getcwd(), f'data/silver/{table['entity']}.parquet')
+        path = os.path.join(os.getcwd(), f"data/silver/{table['entity']}.parquet")
 
-        print(f'Creating schema for {table['entity']}')
+        print(f"Creating schema for {table['entity']}")
         if table['type'] == 'direct_link':
             create_core_schema(cur, table, 2010, 100.0)
             load_data_to_direct_link_table(upload_conn, table['entity'], path)
