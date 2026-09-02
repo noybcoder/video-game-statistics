@@ -7,6 +7,7 @@ load_dotenv()
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.settings import Settings
+from config.paths import CONFIG_DIR
 
 def connect_to_database_for_data_upload(db_config: dict, database: str='video_games') -> duckdb.DuckDBPyConnection:
     conn = duckdb.connect()
@@ -129,7 +130,6 @@ if __name__ == '__main__':
     schema_conn, cur = connect_to_database_for_schema_creation(settings.get_schema_creation_database_credentials)
     upload_conn = connect_to_database_for_data_upload(settings.get_data_load_database_credentials)
 
-    CONFIG_DIR = os.path.join(os.getcwd(), 'config')
     tables = sorted(get_table_structure(CONFIG_DIR, 'entity_names.json'), key=lambda x: x['type'])
 
     for table in tables:

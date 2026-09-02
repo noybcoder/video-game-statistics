@@ -8,7 +8,7 @@ import json, time, os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.settings import Settings
-
+from config.paths import CONFIG_DIR
 
 load_dotenv()
 
@@ -91,8 +91,6 @@ def save_as_json(data, entity_name: str, output_folder: str='data/bronze') -> st
     return filename
 
 if __name__ == '__main__':
-    CONFIG_DIR = os.path.join(os.getcwd(), 'config')
-
     for key, value in get_table_structure(CONFIG_DIR).items():
         data = get_game_data(fields=value['fields'], entity_name=key)
         save_as_json(data=data, entity_name=key)

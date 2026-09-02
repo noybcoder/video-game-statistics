@@ -4,6 +4,8 @@ from typing import Union
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+from config.paths import BRONZE_DIR, SILVER_DIR, CONFIG_DIR
+
 ####### Core Functions  #######
 def create_direct_link_table(func):
     @functools.wraps(func)
@@ -154,10 +156,6 @@ def get_table_metadata(conn, primary_entity, secondary_entity=None, original_pri
 
 if __name__ == '__main__':
     conn = duckdb.connect()
-    BRONZE_DIR = os.path.join(os.getcwd(), 'data/bronze')
-    SILVER_DIR = os.path.join(os.getcwd(), 'data/silver')
-    CONFIG_DIR = os.path.join(os.getcwd(), 'config')
-
     tables = []
 
     for entity in get_table_structure(CONFIG_DIR):
