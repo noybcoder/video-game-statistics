@@ -1,0 +1,97 @@
+[
+  {
+    "entity": "games",
+    "primary_keys": [
+      "game_id"
+    ],
+    "type": "direct_link"
+  },
+  {
+    "entity": "games_genres",
+    "primary_keys": [
+      "game_id",
+      "genre_id"
+    ],
+    "type": "junction",
+    "parent_tables": [
+      "games",
+      "genres"
+    ]
+  },
+  {
+    "entity": "games_game_engines",
+    "primary_keys": [
+      "game_id",
+      "game_engine_id"
+    ],
+    "type": "junction",
+    "parent_tables": [
+      "games",
+      "game_engines"
+    ]
+  },
+  {
+    "entity": "games_platforms",
+    "primary_keys": [
+      "game_id",
+      "platform_id"
+    ],
+    "type": "junction",
+    "parent_tables": [
+      "games",
+      "platforms"
+    ]
+  },
+  {
+    "entity": "genres",
+    "primary_keys": [
+      "genre_id"
+    ],
+    "type": "direct_link"
+  },
+  {
+    "entity": "platforms",
+    "primary_keys": [
+      "platform_id"
+    ],
+    "type": "direct_link"
+  },
+  {
+    "entity": "game_engines",
+    "primary_keys": [
+      "game_engine_id"
+    ],
+    "type": "direct_link"
+  },
+  {
+    "entity": "companies",
+    "primary_keys": [
+      "company_id"
+    ],
+    "type": "direct_link"
+  },
+  {
+    "entity": "companies_developed",
+    "primary_keys": [
+      "company_id",
+      "game_id"
+    ],
+    "type": "junction",
+    "parent_tables": [
+      "companies",
+      "games"
+    ]
+  },
+  {
+    "entity": "companies_published",
+    "primary_keys": [
+      "company_id",
+      "game_id"
+    ],
+    "type": "junction",
+    "parent_tables": [
+      "companies",
+      "games"
+    ]
+  }
+]
