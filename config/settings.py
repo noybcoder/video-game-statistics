@@ -1,4 +1,4 @@
-from pydantic_settings import BaseSettings
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 def to_uppercase(name: str) -> str:
     return name.upper()
@@ -13,12 +13,12 @@ class Settings(BaseSettings):
     postgres_database_password: str
     postgres_database_name: str
 
-    class Config:
-        env_file = '.env'
-        env_file_encoding = 'utf-8'
-        alias_generator = to_uppercase
+    model_config = SettingsConfigDict(
+        env_file = '.env',
+        env_file_encoding = 'utf-8',
         extra = 'ignore'
-
+    )
+        
     @property
     def get_igdb_connection_credentials(self):
         return {
