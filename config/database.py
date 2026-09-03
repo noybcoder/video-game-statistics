@@ -1,8 +1,15 @@
 import psycopg2, duckdb, os, sys
 from fastapi import Depends
+from psycopg2 import pool
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config.settings import Settings
+
+settings = Settings()
+
+connection_pool = psycopg2.pool.SimpleConnectionPool(
+    1, 10, **settings.get_schema_creation_database_credentials
+)
 
 def connect_to_database_for_schema_creation(credentials) -> tuple :
     conn = psycopg2.connect(**credentials)
@@ -12,13 +19,18 @@ def connect_to_database_for_schema_creation(credentials) -> tuple :
     return conn, cur
 
 def get_database_cursor():
-    settings = Settings()
+    conn = connection_pool.getconn()
+    cur = conn.cursor()
 
     try:
-        _, cur = connect_to_database_for_schema_creation(settings.get_schema_creation_database_credentials)
         yield cur
+        conn.commit()
+    except Exception:
+        conn.rollback()
+        raise
     finally:
-        close_connection_for_schema_creation
+        cur.close()
+        connection_pool.putconn(conn)
 
 def connect_to_database_for_data_upload(db_config: dict, database: str='video_games') -> duckdb.DuckDBPyConnection:
     conn = duckdb.connect()
