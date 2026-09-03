@@ -8,14 +8,7 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.settings import Settings
 from config.paths import CONFIG_DIR
-
-def connect_to_database_for_data_upload(db_config: dict, database: str='video_games') -> duckdb.DuckDBPyConnection:
-    conn = duckdb.connect()
-    conn.execute('INSTALL POSTGRES;')
-    conn.execute('LOAD POSTGRES;')
-
-    conn.execute(f"ATTACH '{db_config}' AS {database} (TYPE postgres)")
-    return conn
+from config.database import *
 
 def get_data_file(entity_name: str, path: str='data/silver') -> str:
     return os.path.join(os.getcwd(), f'{path}/{entity_name}.parquet')
@@ -111,18 +104,6 @@ def load_data_to_junction_table(conn: duckdb.DuckDBPyConnection, table_config: l
         INNER JOIN {database}.{second_parent_table} AS c
             ON a.{second_primary_key} = c.{second_primary_key}
     """, {'path': path})
-
-def connect_to_database_for_schema_creation(credentials) -> tuple :
-    conn = psycopg2.connect(**credentials)
-    conn.autocommit = True
-    cur = conn.cursor()
-
-    return conn, cur
-
-def close_connection_for_schema_creation(conn: psycopg2.extensions.connection, cur: psycopg2.extensions.cursor):
-
-    cur.close()
-    conn.close()
 
 if __name__ == '__main__':
     settings = Settings()
