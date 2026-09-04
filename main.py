@@ -21,19 +21,42 @@ async def root():
         "Top platform by video game developed by year (line chart)"
     ]
 
-@app.get("/games")
-async def all_games(cur=Depends(get_database_cursor)):
-    cur.execute("SELECT * FROM games;")
-    return cur.fetchone()
+# @app.get("/games")
+# async def all_games(cur=Depends(get_database_cursor)):
+#     cur.execute("SELECT * FROM games;")
+#     return cur.fetchone()
 
-@app.get("/analytics/games_by_year")
-async def games_by_year(cur=Depends(get_database_cursor)):
+@app.get("/analytics/")
+async def games_by_platform(cur=Depends(get_database_cursor)):
     cur.execute(f"""
+        WITH games_per_platform AS (
+            SELECT
+                pl.platform_name AS platform,
+                COUNT(ga.game_id) AS game_count
+            FROM games ga
+            LEFT JOIN games_platforms gp
+                ON ga.game_id = gp.game_id
+            LEFT JOIN platforms pl
+                ON gp.platform_id = pl.platform_id
+            WHERE release_year <= 2026
+            GROUP BY pl.platform_name
+            ORDER BY game_count DESC
+            LIMIT 15;
+        )
         SELECT
-            COUNT(game_id),
-            release_year
-        FROM games
+            pl.platform_name AS platform,
+            COUNT(ga.game_id) AS game_count
+        FROM games ga
+        LEFT JOIN games_platforms gp
+            ON ga.game_id = gp.game_id
+        LEFT JOIN platforms pl
+            ON gp.platform_id = pl.platform_id
         WHERE release_year <= 2026
-        GROUP BY release_year;
+        GROUP BY pl.platform_name
+        ORDER BY game_count DESC
+        LIMIT 15; 
+            
+        
+        
     """)
     return cur.fetchall()
