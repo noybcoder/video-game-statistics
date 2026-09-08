@@ -19,6 +19,50 @@ async def root():
         "What is the most popular game engine for each genre?"
     ]
 
+@app.get("/analytics/top_n_game_engines/{top_n}")
+async def game_engine_by_developer(top_n: int= 10, cur=Depends(get_database_cursor)):
+    cur.execute(f"""
+        With active_developers AS (
+            SELECT
+                cd.company_id AS company_id
+            FROM companies_developed cd
+            JOIN games ga ON cd.game_id = ga.game_id
+            WHERE ga.total_rating_count >= 30 AND ga.release_year >= EXTRACT(YEAR FROM CURRENT_DATE) - 15
+            GROUP BY cd.company_id
+            HAVING MAX(ga.release_year) >= EXTRACT(YEAR FROM CURRENT_DATE) - 3 AND COUNT(DISTINCT ga.game_id) >= 5
+        )
+        SELECT 
+            ge.game_engine_name AS engine,
+            COUNT(DISTINCT cd.game_id) AS game_count,
+            COUNT(DISTINCT cd.company_id) AS developer_count
+        FROM active_developers ad
+        JOIN companies_developed cd ON ad.company_id = cd.company_id
+        JOIN games ga ON cd.game_id = ga.game_id
+        JOIN games_game_engines gge ON ga.game_id = gge.game_id
+        JOIN game_engines ge ON gge.game_engine_id = ge.game_engine_id
+        WHERE ga.total_rating_count >= 30
+        GROUP BY ge.game_engine_name
+        ORDER BY game_count DESC
+        LIMIT {top_n};
+    """)
+
+    return cur.fetchall()
+
+@app.get("/analytics/genre_by_developer")
+async def genre_by_developer(cur=Depends(get_database_cursor)):
+    cur.execute(f"""
+        SELECT
+            ge.game_engine_name,
+            COUNT(gge.game_id)
+        FROM games_game_engines gge
+        JOIN game_engines ge ON gge.game_engine_id = ge.game_engine_id
+        GROUP BY ge.game_engine_name
+        ORDER BY COUNT(gge.game_id) DESC;
+    """)
+
+    return cur.fetchall()
+
+
 @app.get("/analytics/most_popular_genres_by_year")
 async def genres_by_year(cur=Depends(get_database_cursor)):
     cur.execute(f"""
@@ -46,23 +90,6 @@ async def genres_by_year(cur=Depends(get_database_cursor)):
             ORDER BY release_year ASC, genre_rank ASC
         ) gr
         WHERE gr.genre_rank <= 10
-    """)
-
-    return cur.fetchall()
-
-@app.get("/analytics/total_rating_by_genre")
-async def total_rating_count_by_genre_distribution(cur=Depends(get_database_cursor)):
-    cur.execute(f"""
-        SELECT
-            release_year,
-            ge.genre_name,
-            PERCENTILE_CONT(ARRAY[0, 0.25, 0.5, 0.75, 1]) WITHIN GROUP (ORDER BY total_rating_count)
-        FROM games ga
-        JOIN games_genres gg ON ga.game_id = gg.game_id
-        JOIN genres ge ON gg.genre_id = ge.genre_id
-        WHERE ga.total_rating_count IS NOT NULL
-        GROUP BY release_year, ge.genre_name
-        ORDER BY release_year;
     """)
 
     return cur.fetchall()
