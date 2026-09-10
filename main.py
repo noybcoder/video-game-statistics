@@ -22,10 +22,32 @@ async def root():
 @app.get("/analytics/most_popular_platforms_by_year")
 def genres_by_year(cur=Depends(get_database_cursor)):
     cur.execute(f"""
-        
+        With most_popular_platforms AS (
+            SELECT
+                gp.platform_id,
+                pl.platform_name,
+                COUNT(DISTINCT ga.game_id) AS game_count
+            FROM games_platforms gp
+            JOIN games ga ON gp.game_id = ga.game_id
+            JOIN platforms pl ON gp.platform_id = pl.platform_id
+            WHERE ga.release_year >= EXTRACT(YEAR FROM CURRENT_DATE) - 15 AND ga.total_rating_count >= 30
+            GROUP BY gp.platform_id, pl.platform_name
+            ORDER BY game_count DESC
+            LIMIT 15
+        )
+        SELECT
+            mpp.platform_name,
+            ga.release_year,
+            COUNT(DISTINCT ga.game_id)
+        FROM most_popular_platforms mpp
+        JOIN games_platforms gp ON mpp.platform_id = gp.platform_id
+        JOIN games ga ON gp.game_id = ga.game_id
+        WHERE ga.release_year >= EXTRACT(YEAR FROM CURRENT_DATE) - 15 AND ga.total_rating_count >= 30
+        GROUP BY mpp.platform_name, ga.release_year
+        ORDER BY mpp.platform_name ASC, ga.release_year ASC, COUNT(DISTINCT ga.game_id) DESC
     """)
 
-    return cur.fetchall()
+    return [{'platform': result[0], 'release_year': result[1], 'game_count': result[2]} for result in cur.fetchall()]
 
 # A pie chart
 @app.get("/analytics/genre_distribution")
@@ -41,7 +63,7 @@ async def genre_by_market_share(cur=Depends(get_database_cursor)):
         GROUP BY ge.genre_name
     """)
 
-    return cur.fetchall()
+    return [{'genre': result[0], 'game_count': result[1]} for result in cur.fetchall()]
 
 # A matrix or table
 @app.get("/analytics/genres_per_developer")
@@ -88,7 +110,7 @@ async def game_genres_by_developer(cur=Depends(get_database_cursor)):
         
     """)
 
-    return cur.fetchall()
+    return [{'developer': result[0], 'genre': result[1], 'total_game_count': result[2], 'genre_pct_of_game_count': result[3]} for result in cur.fetchall()]
 
 # A bar chart?
 @app.get("/analytics/top_n_game_engines/{top_n}")
