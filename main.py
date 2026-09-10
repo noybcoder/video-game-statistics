@@ -110,7 +110,7 @@ async def game_genres_by_developer(cur=Depends(get_database_cursor)):
         
     """)
 
-    return [{'developer': result[0], 'genre': result[1], 'total_game_count': result[2], 'genre_pct_of_game_count': result[3]} for result in cur.fetchall()]
+    return [{'developer': result[0], 'genre': result[1], 'total_game_count': result[2], 'pct_of_total_game_count': result[3]} for result in cur.fetchall()]
 
 # A bar chart?
 @app.get("/analytics/top_n_game_engines/{top_n}")
@@ -140,7 +140,7 @@ async def game_engine_by_developer(top_n: int= 10, cur=Depends(get_database_curs
         LIMIT {top_n};
     """)
 
-    return cur.fetchall()
+    return [{'engine': result[0], 'game_count': result[1], 'developer_count': result[2]} for result in cur.fetchall()]
 
 # Heatmap
 @app.get("/analytics/most_popular_genres_by_year")
@@ -170,7 +170,6 @@ async def genres_by_year(cur=Depends(get_database_cursor)):
         ) gr
         WHERE gr.genre_rank <= 10
         ORDER BY release_year ASC, genre_rank ASC
-
     """)
 
-    return cur.fetchall()
+    return [{'genre': result[0], 'release_year': result[1], 'weighted_average_rating': result[2]} for result in cur.fetchall()]
