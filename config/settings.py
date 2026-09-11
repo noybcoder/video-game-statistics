@@ -1,4 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pathlib import Path
 
 def to_uppercase(name: str) -> str:
     return name.upper()
@@ -14,7 +15,7 @@ class Settings(BaseSettings):
     postgres_database_name: str
 
     model_config = SettingsConfigDict(
-        env_file = '.env',
+        env_file = f'{Path(__file__).parent.parent}/.env',
         env_file_encoding = 'utf-8',
         extra = 'ignore'
     )
