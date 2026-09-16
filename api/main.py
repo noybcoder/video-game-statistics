@@ -165,7 +165,8 @@ async def genres_by_year(cur=Depends(get_database_cursor)):
                 genre_name,
                 release_year,
                 average_total_rating,
-                RANK() OVER(PARTITION BY release_year ORDER BY average_total_rating DESC) AS genre_rank
+                RANK() OVER(PARTITION BY release_year ORDER BY average_total_rating DESC) AS genre_rank,
+                COUNT(*) OVER(PARTITION BY genre_name) AS average_total_rating_count
             FROM genre_rank_by_year
         ) gr
         WHERE gr.genre_rank <= 10
