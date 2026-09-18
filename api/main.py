@@ -113,8 +113,8 @@ async def game_genres_by_developer(cur=Depends(get_database_cursor)):
     return [{'developer': result[0], 'genre': result[1], 'total_game_count': result[2], 'pct_of_total_game_count': result[3]} for result in cur.fetchall()]
 
 # A bar chart?
-@app.get("/analytics/top_n_game_engines/{top_n}")
-async def game_engine_by_developer(top_n: int= 10, cur=Depends(get_database_cursor)):
+@app.get("/analytics/top_n_game_engines")
+async def game_engine_by_developer(cur=Depends(get_database_cursor)):
     cur.execute(f"""
         With active_developers AS (
             SELECT
@@ -136,8 +136,7 @@ async def game_engine_by_developer(top_n: int= 10, cur=Depends(get_database_curs
         JOIN game_engines ge ON gge.game_engine_id = ge.game_engine_id
         WHERE ga.total_rating_count >= 30
         GROUP BY ge.game_engine_name
-        ORDER BY game_count DESC
-        LIMIT {top_n};
+        ORDER BY game_count DESC;
     """)
 
     return [{'engine': result[0], 'game_count': result[1], 'developer_count': result[2]} for result in cur.fetchall()]
