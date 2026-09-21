@@ -1,8 +1,32 @@
 import streamlit as st
 from page_utils import set_up_page
 from api_client import fetch_or_halt
+import plotly.express as px
 
 set_up_page('Developer Insights', '🛠️', """This page shows the industry overview""")
+
+game_engine_data = fetch_or_halt('analytics/top_n_game_engines')
+st.subheader('Game Engines Choices by Developer')
+sorted_engine_data = game_engine_data.sort_values(by='game_count', ascending=False).head(15)
+
+fig = px.bar(
+    sorted_engine_data,
+    x='engine',
+    y=['game_count', 'developer_count'],
+    barmode='group',
+    labels={'value': 'Count', 'engine': 'Engine', 'variable': 'Metric'},
+    title=f'Top {sorted_engine_data.shape[0]} Game Engines Among Active Developers'
+)
+st.plotly_chart(fig, use_container_width=True)
+
+with st.expander("Show all engines"):
+    st.dataframe(
+        game_engine_data.sort_values('game_count', ascending=False),
+        use_container_width=True,
+        hide_index=True
+    )
+
+st.divider()
 
 genre_data = fetch_or_halt('analytics/genres_per_developer')
     
@@ -10,6 +34,8 @@ genre_data = genre_data.rename(columns={
     'developer': 'Developer', 'genre': 'Genre', 
     'total_game_count': 'Number of Games Developed', 'pct_of_total_game_count': 'Percentage of Games Developed'
 })
+
+st.subheader('Genre Specialization Among Active Developers')
 
 col1, col2 = st.columns(2)
 
@@ -38,7 +64,6 @@ if genres:
 
 filtered_data = filtered_data.sort_values(by=['Percentage of Games Developed', 'Genre'], ascending=[False, True])
 
-st.subheader('Genre Specialization Among Active Developers')
 st.dataframe(filtered_data, use_container_width=True, hide_index=True, column_config={
         "Percentage of Games Developed": st.column_config.ProgressColumn(
             "Percentage of Games Developed",
