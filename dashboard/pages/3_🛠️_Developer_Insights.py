@@ -3,16 +3,23 @@ from page_utils import set_up_page
 from api_client import fetch_or_halt
 import plotly.express as px
 
-set_up_page('Developer Insights', '🛠️', """This page shows the industry overview""")
+set_up_page(
+    'Developer Insights', 
+    '🛠️', 
+    "Explores which game engines and genres are favored by active developers — studios with "
+    "sustained, recent, well-rated output over the last 15 years."
+)
 
 game_engine_data = fetch_or_halt('analytics/top_n_game_engines')
 st.subheader('Game Engines Choices by Developer')
-sorted_engine_data = game_engine_data.sort_values(by='game_count', ascending=False).head(15)
+sorted_engine_data = game_engine_data \
+    .rename(columns={'game_count': 'Games', 'developer_count': 'Developers'}) \
+    .sort_values(by='Games', ascending=False).head(15)
 
 fig = px.bar(
     sorted_engine_data,
     x='engine',
-    y=['game_count', 'developer_count'],
+    y=['Games', 'Developers'],
     barmode='group',
     labels={'value': 'Count', 'engine': 'Engine', 'variable': 'Metric'},
     title=f'Top {sorted_engine_data.shape[0]} Game Engines Among Active Developers'
