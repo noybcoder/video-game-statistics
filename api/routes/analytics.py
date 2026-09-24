@@ -55,17 +55,7 @@ async def genre_by_market_share(cur=Depends(get_database_cursor)):
 @router.get("/genres_per_developer")
 async def game_genres_by_developer(cur=Depends(get_database_cursor)):
     cur.execute(f"""
-        With active_developers AS (
-            SELECT
-                cd.company_id AS company_id,
-                COUNT(cd.game_id) AS total_game_count
-            FROM companies_developed cd
-            JOIN games ga ON cd.game_id = ga.game_id
-            WHERE ga.total_rating_count >= 30 AND ga.release_year >= EXTRACT(YEAR FROM CURRENT_DATE) - 15
-            GROUP BY cd.company_id
-            HAVING MAX(ga.release_year) >= EXTRACT(YEAR FROM CURRENT_DATE) - 3 AND COUNT(DISTINCT ga.game_id) >= 5
-        ),
-        developer_genre_distribution AS (
+        With developer_genre_distribution AS (
             SELECT
                 co.company_name AS developer,
                 ge.genre_name AS genre,
@@ -101,16 +91,7 @@ async def game_genres_by_developer(cur=Depends(get_database_cursor)):
 @router.get("/top_n_game_engines")
 async def game_engine_by_developer(cur=Depends(get_database_cursor)):
     cur.execute(f"""
-        With active_developers AS (
-            SELECT
-                cd.company_id AS company_id
-            FROM companies_developed cd
-            JOIN games ga ON cd.game_id = ga.game_id
-            WHERE ga.total_rating_count >= 30 AND ga.release_year >= EXTRACT(YEAR FROM CURRENT_DATE) - 15
-            GROUP BY cd.company_id
-            HAVING MAX(ga.release_year) >= EXTRACT(YEAR FROM CURRENT_DATE) - 3 AND COUNT(DISTINCT ga.game_id) >= 5
-        )
-        SELECT 
+        SELECT
             ge.game_engine_name AS engine,
             COUNT(DISTINCT cd.game_id) AS game_count,
             COUNT(DISTINCT cd.company_id) AS developer_count

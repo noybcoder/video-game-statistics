@@ -58,7 +58,7 @@ def create_regular_schema() -> str:
 def create_core_schema(cur: psycopg2.extensions.cursor, table_config: list, release_year: int, rating: float) -> None:
     if table_config['entity'] == 'games':
         create_games_schema(cur, table_config['entity'], release_year, rating)
-    elif table['entity'] == 'companies':
+    elif table_config['entity'] == 'companies':
         create_companies_schema(cur, table_config['entity'])
     else:
         create_regular_schema(cur, table_config['entity'])
@@ -105,6 +105,34 @@ def load_data_to_junction_table(conn: duckdb.DuckDBPyConnection, table_config: l
             ON a.{second_primary_key} = c.{second_primary_key}
     """, {'path': path})
 
+def create_junction_index(cur: psycopg2.extensions.cursor, table_config) -> None:
+    entity = table_config['entity']
+    index_key = table_config['primary_keys'][-1]
+    cur.execute(f"""
+        DROP INDEX IF EXISTS idx_{entity}_{index_key};
+        CREATE INDEX idx_{entity}_{index_key} ON {entity}({index_key})
+    """)
+
+def create_game_filter_index(cur: psycopg2.extensions.cursor) -> None:
+    cur.execute(f"""
+        DROP INDEX IF EXISTS idx_games_rating_year;
+        CREATE INDEX idx_games_rating_year ON games(total_rating_count, release_year)
+    """)
+
+
+def create_active_developers_view(cur: psycopg2.extensions.cursor, rating_count: int=30, offset_years: int=15, recent_release_years: int=3, games_released: int=5) -> None:
+    cur.execute(f"""
+        CREATE OR REPLACE VIEW active_developers AS
+            SELECT
+                cd.company_id AS company_id,
+                COUNT(cd.game_id) AS total_game_count
+            FROM companies_developed cd
+            JOIN games ga ON cd.game_id = ga.game_id
+            WHERE ga.total_rating_count >= {rating_count} AND ga.release_year >= EXTRACT(YEAR FROM CURRENT_DATE) - {offset_years}
+            GROUP BY cd.company_id
+            HAVING MAX(ga.release_year) >= EXTRACT(YEAR FROM CURRENT_DATE) - {recent_release_years} AND COUNT(DISTINCT ga.game_id) >= {games_released}
+    """)
+
 if __name__ == '__main__':
     settings = Settings()
 
@@ -124,4 +152,10 @@ if __name__ == '__main__':
             create_junction_schema(cur, table)
             load_data_to_junction_table(upload_conn, table, path)
 
+            if table['entity'] != 'companies_published':
+                print(f"Creating index for {table['entity']}")
+                create_junction_index(cur, table)
+
+    create_active_developers_view(cur)
+    create_game_filter_index(cur)
     close_connection_for_schema_creation(schema_conn, cur)

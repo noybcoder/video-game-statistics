@@ -3,10 +3,10 @@ from fastapi import FastAPI
 import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from routes.analytics import router as analytics_router
+from routes import analytics
 
 app = FastAPI()
-app.include_router(analytics_router)
+app.include_router(analytics.router)
 
 @app.get("/")
 async def root():
