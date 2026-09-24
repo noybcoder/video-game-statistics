@@ -82,8 +82,6 @@ async def game_genres_by_developer(cur=Depends(get_database_cursor)):
             FROM developer_genre_distribution
         ) final
         WHERE final.genre_rank = 1;
-        
-        
     """)
 
     return [{'developer': result[0], 'genre': result[1], 'total_game_count': result[2], 'pct_of_total_game_count': result[3]} for result in cur.fetchall()]

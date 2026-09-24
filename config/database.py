@@ -1,15 +1,15 @@
-import psycopg2, duckdb, os, sys
-from fastapi import Depends
-from psycopg2 import pool
+import psycopg2, duckdb
 
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-from config.settings import Settings
+connection_pool = None
 
-settings = Settings()
+def init_connection_pool(credentials: dict, minconn: int = 1, maxconn: int = 10):
+    global connection_pool
+    connection_pool = psycopg2.pool.SimpleConnectionPool(minconn, maxconn, **credentials)
 
-connection_pool = psycopg2.pool.SimpleConnectionPool(
-    1, 10, **settings.get_schema_creation_database_credentials
-)
+def close_connection_pool():
+    global connection_pool
+    if connection_pool:
+        connection_pool.closeall()
 
 def connect_to_database_for_schema_creation(credentials) -> tuple :
     conn = psycopg2.connect(**credentials)
