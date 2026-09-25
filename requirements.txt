@@ -1,7 +1,0 @@
-streamlit
-plotly
-pandas
-requests
-psycopg2
-duckdb
-fastapi
