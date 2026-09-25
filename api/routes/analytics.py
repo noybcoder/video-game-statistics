@@ -4,10 +4,11 @@ import os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.database import get_database_cursor
+from schemas.analytics import PlatformYearCount, GenreCount, DeveloperGenre, EngineCount, GenreRanking
 
 router = APIRouter(prefix="/analytics", tags=["analytics"])
 
-@router.get("/most_popular_platforms_by_year")
+@router.get("/most_popular_platforms_by_year", response_model=list[PlatformYearCount])
 async def platforms_by_year(cur=Depends(get_database_cursor)):
     cur.execute(f"""
         With most_popular_platforms AS (
@@ -37,7 +38,7 @@ async def platforms_by_year(cur=Depends(get_database_cursor)):
 
     return [{'platform': result[0], 'release_year': result[1], 'game_count': result[2]} for result in cur.fetchall()]
 
-@router.get("/genre_distribution")
+@router.get("/genre_distribution", response_model=list[GenreCount])
 async def genre_by_market_share(cur=Depends(get_database_cursor)):
     cur.execute(f"""
         SELECT 
@@ -52,7 +53,7 @@ async def genre_by_market_share(cur=Depends(get_database_cursor)):
 
     return [{'genre': result[0], 'game_count': result[1]} for result in cur.fetchall()]
 
-@router.get("/genres_per_developer")
+@router.get("/genres_per_developer", response_model=list[DeveloperGenre])
 async def game_genres_by_developer(cur=Depends(get_database_cursor)):
     cur.execute(f"""
         With developer_genre_distribution AS (
@@ -86,7 +87,7 @@ async def game_genres_by_developer(cur=Depends(get_database_cursor)):
 
     return [{'developer': result[0], 'genre': result[1], 'total_game_count': result[2], 'pct_of_total_game_count': result[3]} for result in cur.fetchall()]
 
-@router.get("/top_n_game_engines")
+@router.get("/top_n_game_engines", response_model=list[EngineCount])
 async def game_engine_by_developer(cur=Depends(get_database_cursor)):
     cur.execute(f"""
         SELECT
@@ -105,7 +106,7 @@ async def game_engine_by_developer(cur=Depends(get_database_cursor)):
 
     return [{'engine': result[0], 'game_count': result[1], 'developer_count': result[2]} for result in cur.fetchall()]
 
-@router.get("/most_popular_genres_by_year")
+@router.get("/most_popular_genres_by_year", response_model=list[GenreRanking])
 async def genres_by_year(cur=Depends(get_database_cursor)): 
     cur.execute(f"""
         WITH genre_rank_by_year AS (
