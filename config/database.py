@@ -1,10 +1,11 @@
 import psycopg2, duckdb
+from psycopg2 import pool
 
 connection_pool = None
 
 def init_connection_pool(credentials: dict, minconn: int = 1, maxconn: int = 10):
     global connection_pool
-    connection_pool = psycopg2.pool.SimpleConnectionPool(minconn, maxconn, **credentials)
+    connection_pool = pool.SimpleConnectionPool(minconn, maxconn, **credentials)
 
 def close_connection_pool():
     global connection_pool
