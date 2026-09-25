@@ -6,13 +6,13 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.settings import Settings
 from config.database import init_connection_pool, close_connection_pool
-from routes import analytics
+from api.routes import analytics
 
 settings = Settings()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    init_connection_pool(settings.get_schema_creation_database_credentials)
+    init_connection_pool(settings.get_database_connection_string)
     yield
     close_connection_pool()
 

@@ -26,18 +26,13 @@ class Settings(BaseSettings):
             'Client-ID': self.igdb_client_id, 
             'Authorization': f'Bearer {self.igdb_access_token}'
         }
-
+    
     @property
-    def get_schema_creation_database_credentials(self):
-        return {
-            'host': self.postgres_database_host,
-            'port': self.postgres_database_port,
-            'user': self.postgres_database_user,
-            'password': self.postgres_database_password,
-            'dbname': self.postgres_database_name
-        }
+    def get_database_connection_string(self):
+        host = self.postgres_database_host
+        port = self.postgres_database_port
+        user = self.postgres_database_user
+        password = self.postgres_database_password
+        dbname = self.postgres_database_name
 
-    @property
-    def get_data_load_database_credentials(self):
-        credentials = self.get_schema_creation_database_credentials
-        return ' '.join([f'{k}={v}' for k, v in credentials.items()])
+        return f'postgresql://{user}:{password}@{host}:{port}/{dbname}'

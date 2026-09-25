@@ -82,13 +82,13 @@ def create_junction_schema(cur: psycopg2.extensions.cursor, table_config: list):
         );
     """)
 
-def load_data_to_direct_link_table(conn: duckdb.DuckDBPyConnection, entity_name: str, path: str, database: str='video_games'):
+def load_data_to_direct_link_table(conn: duckdb.DuckDBPyConnection, entity_name: str, path: str, database: str='supabase'):
     conn.execute(f"""
         INSERT INTO {database}.{entity_name}
         SELECT * FROM read_parquet($path)
     """, {'path': path})
 
-def load_data_to_junction_table(conn: duckdb.DuckDBPyConnection, table_config: list, path: str, database: str='video_games'):
+def load_data_to_junction_table(conn: duckdb.DuckDBPyConnection, table_config: list, path: str, database: str='supabase'):
     entity_name = table_config['entity']
     first_primary_key, second_primary_key = table_config['primary_keys']
     first_parent_table, second_parent_table = table_config['parent_tables']
@@ -136,8 +136,8 @@ def create_active_developers_view(cur: psycopg2.extensions.cursor, rating_count:
 if __name__ == '__main__':
     settings = Settings()
 
-    schema_conn, cur = connect_to_database_for_schema_creation(settings.get_schema_creation_database_credentials)
-    upload_conn = connect_to_database_for_data_upload(settings.get_data_load_database_credentials)
+    schema_conn, cur = connect_to_database_for_schema_creation(settings.get_database_connection_string)
+    upload_conn = connect_to_database_for_data_upload(settings.get_database_connection_string)
 
     tables = sorted(get_table_structure(CONFIG_DIR, 'entity_names.json'), key=lambda x: x['type'])
 
