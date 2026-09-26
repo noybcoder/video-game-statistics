@@ -13,22 +13,21 @@ from config.paths import CONFIG_DIR
 load_dotenv()
 
 def get_query(last_id: int, fields: list, limit: int=500, entity_name: str='games', year: int=2011, month: int=1, day: int=1):
-    base_query = f"""
-                    fields {', '.join(fields)};
-                    sort id asc;
-                    where id > {last_id}
-                """
+    filter_condition = [f'id > {last_id}']
+
     if entity_name == 'games':
-        base_query += f' & first_release_date >= {int(get_timestamp(year, month, day))}'
+        filter_condition.append(f'first_release_date >= {int(get_timestamp(year, month, day))}')
 
-    base_query += f'; limit {limit};'
-    return base_query
+    return f"""
+        fields {', '.join(fields)};
+        sort id asc;
+        where {' & '.join(filter_condition)};
+        limit {limit};
+    """
 
-def get_game_data(fields: list, limit: int=500, entity_name: str='games', year: int=2011, month: int=1, day: int=1) -> list:
+def get_game_data(fields: list, credentials: dict, limit: int=500, entity_name: str='games', year: int=2011, month: int=1, day: int=1) -> list:
     master_responses = []
     last_id = 0
-
-    settings = Settings()
 
     while True:
         query = get_query(last_id, fields, limit, entity_name, year, month, day)
@@ -36,7 +35,7 @@ def get_game_data(fields: list, limit: int=500, entity_name: str='games', year: 
         try:
             response = post(
                 f'https://api.igdb.com/v4/{entity_name}', 
-                **{'headers': settings.get_igdb_connection_credentials, 'data': query})
+                **{'headers': credentials, 'data': query})
             response.raise_for_status()
         except HTTPError as err:
             print(err)
@@ -83,7 +82,7 @@ def save_as_json(data, entity_name: str, output_folder: str='data/bronze') -> st
 
     if not data['data']:
         print(f'No data retrieved for "{entity_name}"')
-        return
+        return None
     
     with open(filename, 'w', encoding='utf-8') as f:
         json.dump(data, f, indent=2, ensure_ascii=False)
@@ -91,6 +90,12 @@ def save_as_json(data, entity_name: str, output_folder: str='data/bronze') -> st
     return filename
 
 if __name__ == '__main__':
+    settings = Settings()
+
     for key, value in get_table_structure(CONFIG_DIR).items():
-        data = get_game_data(fields=value['fields'], entity_name=key)
+        data = get_game_data(
+            fields=value['fields'], 
+            credentials=settings.get_igdb_connection_credentials, 
+            entity_name=key
+        )
         save_as_json(data=data, entity_name=key)
