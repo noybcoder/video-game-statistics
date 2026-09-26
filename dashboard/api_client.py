@@ -4,7 +4,7 @@ import numpy as np
 import requests
 import plotly.express as px
 
-HOST = 'http://127.0.0.1:8000'
+HOST = 'https://video-game-statistics-api.onrender.com'
 
 @st.cache_data(ttl=3600)
 def get_data(endpoint: str) -> pd.DataFrame:
