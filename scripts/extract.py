@@ -1,12 +1,11 @@
 from dotenv import load_dotenv
 from requests import post
 from datetime import datetime
-from utils import *
 from requests.exceptions import HTTPError, JSONDecodeError
 import json, time, os, sys
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
+from scripts.utils import get_table_structure, get_timestamp
 from config.settings import Settings
 from config.paths import CONFIG_DIR
 

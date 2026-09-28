@@ -8,5 +8,6 @@ dependencies = [
     "httpx>=0.28.1",
     "httpx2>=2.13.1",
     "plotly>=7.1.0",
+    "prefect>=3.8.6",
     "psycopg2-binary>=2.9.13",
 ]
