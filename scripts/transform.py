@@ -72,7 +72,6 @@ def create_company_table(conn: duckdb.DuckDBPyConnection) -> str:
 def remove_fields(conn: duckdb.DuckDBPyConnection, entity_name: str, *fields):
     for field in fields:
         conn.execute(f'ALTER TABLE {entity_name} DROP {field}')
-    return conn.table(entity_name)
 
 @create_direct_link_table
 def create_generic_table():
@@ -154,6 +153,19 @@ def get_table_metadata(conn, primary_entity, secondary_entity=None, original_pri
 
     return details
 
+def process_junction_table(conn, schema, entity, field, file_location, tables):
+    if schema[field] == 'INTEGER[]':
+        create_junction_table(conn, entity, field)
+        junction_table_name = get_junction_table_name(entity, field)
+        remove_fields(conn, entity, field)
+        save_as_parquet(conn, junction_table_name, file_location)
+        tables.append(get_table_metadata(conn, junction_table_name, entity, field))
+
+def process_junction_tables(conn, schema, entity, file_location, tables):
+    for field in schema:
+        process_junction_table(conn, schema, entity, field, file_location, tables)
+
+
 if __name__ == '__main__':
     conn = duckdb.connect()
     tables = []
@@ -164,13 +176,7 @@ if __name__ == '__main__':
         schema = get_schema(conn, entity)
         tables.append(get_table_metadata(conn, entity))
 
-        for field in schema:
-            if schema[field] == 'INTEGER[]':
-                create_junction_table(conn, entity, field)
-                junction_table_name = get_junction_table_name(entity, field)
-                core_table = remove_fields(conn, entity, field)
-                save_as_parquet(conn, junction_table_name, SILVER_DIR)
-                tables.append(get_table_metadata(conn, junction_table_name, entity, field))
+        process_junction_tables(conn, schema, entity, SILVER_DIR, tables)
 
         save_as_parquet(conn, entity, SILVER_DIR)
         save_table_names(CONFIG_DIR, tables)

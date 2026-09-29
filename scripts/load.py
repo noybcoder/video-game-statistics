@@ -133,6 +133,25 @@ def create_active_developers_view(cur: psycopg2.extensions.cursor, rating_count:
             HAVING MAX(ga.release_year) >= EXTRACT(YEAR FROM CURRENT_DATE) - {recent_release_years} AND COUNT(DISTINCT ga.game_id) >= {games_released}
     """)
 
+def create_schema_and_index(cur, table, upload_conn, path, release_year: int, rating: float):
+    if table['type'] == 'direct_link':
+        create_core_schema(cur, table, release_year, rating)
+        load_data_to_direct_link_table(upload_conn, table['entity'], path)
+    else:
+        create_junction_schema(cur, table)
+        load_data_to_junction_table(upload_conn, table, path)
+
+        if table['entity'] != 'companies_published':
+            print(f"Creating index for {table['entity']}")
+            create_junction_index(cur, table)
+
+def load_all_tables(cur, tables, upload_conn, release_year: int, rating: float):
+    for table in tables:
+        path = os.path.join(os.getcwd(), f"data/silver/{table['entity']}.parquet")
+
+        print(f"Creating schema for {table['entity']}")
+        create_schema_and_index(cur, table, upload_conn, path, release_year, rating)
+
 if __name__ == '__main__':
     settings = Settings()
 
@@ -141,21 +160,8 @@ if __name__ == '__main__':
 
     tables = sorted(get_table_structure(CONFIG_DIR, 'entity_names.json'), key=lambda x: x['type'])
 
-    for table in tables:
-        path = os.path.join(os.getcwd(), f"data/silver/{table['entity']}.parquet")
-
-        print(f"Creating schema for {table['entity']}")
-        if table['type'] == 'direct_link':
-            create_core_schema(cur, table, 2010, 100.0)
-            load_data_to_direct_link_table(upload_conn, table['entity'], path)
-        else:
-            create_junction_schema(cur, table)
-            load_data_to_junction_table(upload_conn, table, path)
-
-            if table['entity'] != 'companies_published':
-                print(f"Creating index for {table['entity']}")
-                create_junction_index(cur, table)
-
+    load_all_tables(cur, tables, upload_conn, 2010, 100.0)
+    
     create_active_developers_view(cur)
     create_game_filter_index(cur)
     close_connection_for_schema_creation(schema_conn, cur)
