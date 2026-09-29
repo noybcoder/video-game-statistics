@@ -79,13 +79,11 @@ def create_generic_table():
 
 def create_core_tables(conn, entity, file_path):
     if entity == 'games':
-        table = create_game_table(conn, entity, file_path)
+        create_game_table(conn, entity, file_path)
     elif entity == 'companies':
-        table = create_company_table(conn, entity, file_path)
+        create_company_table(conn, entity, file_path)
     else:
-        table = create_generic_table(conn, entity, file_path)
-
-    return table
+        create_generic_table(conn, entity, file_path)
 
 ###### Help Functions ######
 def get_junction_table_name(primary_entity, secondary_entity):
@@ -172,7 +170,7 @@ if __name__ == '__main__':
 
     for entity in get_table_structure(CONFIG_DIR):
         file_path = get_latest_file(BRONZE_DIR, entity)
-        core_table = create_core_tables(conn, entity, file_path)
+        create_core_tables(conn, entity, file_path)
         schema = get_schema(conn, entity)
         tables.append(get_table_metadata(conn, entity))
 
