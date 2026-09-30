@@ -12,7 +12,7 @@ settings = Settings()
 
 @task
 def extract(credentials: dict, table_structure_dir: str, output_folder: str) -> None:
-    extract_all_tables(credentials, table_structure_dir)
+    extract_all_tables(credentials, table_structure_dir, output_folder)
 
 @task
 def transform(table_structure_dir: str, source_dir: str, output_folder: str) -> None:    
