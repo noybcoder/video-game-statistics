@@ -1,10 +1,10 @@
 import duckdb, os, re, sys, functools, pycountry, inspect, json
-from utils import *
 from typing import Union
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.paths import BRONZE_DIR, SILVER_DIR, CONFIG_DIR
+from scripts.utils import get_singular_entity_name, get_table_structure
 
 ####### Core Functions  #######
 def create_direct_link_table(func):
@@ -163,18 +163,21 @@ def process_junction_tables(conn, schema, entity, file_location, tables):
     for field in schema:
         process_junction_table(conn, schema, entity, field, file_location, tables)
 
-
-if __name__ == '__main__':
-    conn = duckdb.connect()
+def transform_all_tables(conn, table_structure_dir, source_dir, output_folder):
     tables = []
 
-    for entity in get_table_structure(CONFIG_DIR):
-        file_path = get_latest_file(BRONZE_DIR, entity)
+    for entity in get_table_structure(table_structure_dir):
+        file_path = get_latest_file(source_dir, entity)
         create_core_tables(conn, entity, file_path)
         schema = get_schema(conn, entity)
         tables.append(get_table_metadata(conn, entity))
 
-        process_junction_tables(conn, schema, entity, SILVER_DIR, tables)
+        process_junction_tables(conn, schema, entity, output_folder, tables)
 
-        save_as_parquet(conn, entity, SILVER_DIR)
-        save_table_names(CONFIG_DIR, tables)
+        save_as_parquet(conn, entity, output_folder)
+        save_table_names(table_structure_dir, tables)
+
+if __name__ == '__main__':
+    conn = duckdb.connect()
+
+    transform_all_tables(conn, CONFIG_DIR, BRONZE_DIR, SILVER_DIR)

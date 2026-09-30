@@ -1,4 +1,3 @@
-from dotenv import load_dotenv
 from requests import post
 from datetime import datetime
 from requests.exceptions import HTTPError, JSONDecodeError
@@ -7,9 +6,7 @@ import json, time, os, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from scripts.utils import get_table_structure, get_timestamp
 from config.settings import Settings
-from config.paths import CONFIG_DIR
-
-load_dotenv()
+from config.paths import CONFIG_DIR, BRONZE_DIR
 
 def get_query(last_id: int, fields: list, limit: int=500, entity_name: str='games', year: int=2011, month: int=1, day: int=1):
     filter_condition = [f'id > {last_id}']
@@ -75,7 +72,7 @@ def get_output_data(data, entity_name: str) -> dict:
         'data': data
     }
 
-def save_as_json(data, entity_name: str, output_folder: str='data/bronze') -> str:
+def save_as_json(data, entity_name: str, output_folder: str) -> str:
     filename = get_file_name(entity_name, output_folder)
     data = get_output_data(data, entity_name)
 
@@ -88,13 +85,11 @@ def save_as_json(data, entity_name: str, output_folder: str='data/bronze') -> st
 
     return filename
 
+def extract_all_tables(credentials, table_structure_dir, output_folder: str='data/bronze'):
+    for key, value in get_table_structure(table_structure_dir).items():
+        data = get_game_data(fields=value['fields'], credentials=credentials, entity_name=key)
+        save_as_json(data=data, entity_name=key, output_folder=output_folder)
+        
 if __name__ == '__main__':
     settings = Settings()
-
-    for key, value in get_table_structure(CONFIG_DIR).items():
-        data = get_game_data(
-            fields=value['fields'], 
-            credentials=settings.get_igdb_connection_credentials, 
-            entity_name=key
-        )
-        save_as_json(data=data, entity_name=key)
+    extract_all_tables(settings.get_igdb_connection_credentials, CONFIG_DIR, BRONZE_DIR)

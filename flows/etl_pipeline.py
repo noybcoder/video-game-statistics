@@ -4,46 +4,30 @@ import os, sys, duckdb
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from config.settings import Settings
 from config.paths import BRONZE_DIR, SILVER_DIR, CONFIG_DIR
-from scripts.utils import get_table_structure
-from scripts.extract import get_game_data, save_as_json
-from scripts.transform import get_latest_file, create_core_tables, get_schema, get_table_metadata, process_junction_tables, save_as_parquet, save_table_names
+from scripts.extract import extract_all_tables
+from scripts.transform import transform_all_tables
+from scripts.load import load_pipelines
 
 settings = Settings()
 
 @task
-def extract(credentials: dict) -> None:
-    for key, value in get_table_structure(CONFIG_DIR).items():
-        data = get_game_data(
-            fields=value['fields'], 
-            credentials=credentials, 
-            entity_name=key
-        )
-        save_as_json(data=data, entity_name=key)
+def extract(credentials: dict, table_structure_dir: str, output_folder: str) -> None:
+    extract_all_tables(credentials, table_structure_dir)
 
 @task
-def transform() -> None:    
+def transform(table_structure_dir: str, source_dir: str, output_folder: str) -> None:    
     conn = duckdb.connect()
-    tables = []
+    transform_all_tables(conn, table_structure_dir, source_dir, output_folder)
 
-    for entity in get_table_structure(CONFIG_DIR):
-        file_path = get_latest_file(BRONZE_DIR, entity)
-        create_core_tables(conn, entity, file_path)
-        schema = get_schema(conn, entity)
-        tables.append(get_table_metadata(conn, entity))
-
-        process_junction_tables(conn, schema, entity, SILVER_DIR, tables)
-
-        save_as_parquet(conn, entity, SILVER_DIR)
-        save_table_names(CONFIG_DIR, tables)
+@task
+def load(connection_string: str, table_structure_dir: str, release_year: int=2010, rating: float=100.0) -> None:
+    load_pipelines(connection_string, table_structure_dir, release_year, rating)
 
 @flow
-def main() -> None:
-    extract(settings.get_igdb_connection_credentials)
-    transform()
-
+def run_etl_pipeline() -> None:
+    extract(settings.get_igdb_connection_credentials, CONFIG_DIR, BRONZE_DIR)
+    transform(CONFIG_DIR, BRONZE_DIR, SILVER_DIR)
+    load(settings.get_database_connection_string, CONFIG_DIR)
 
 if __name__ == '__main__':
-    main.serve(
-        name='my-first-deployment',
-        cron="5 * * * *"
-    )
+    run_etl_pipeline()

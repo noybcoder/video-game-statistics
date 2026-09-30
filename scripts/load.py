@@ -1,13 +1,10 @@
 import psycopg2, duckdb, os, functools, inspect, sys
-from dotenv import load_dotenv
-from utils import *
-
-load_dotenv()
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.settings import Settings
 from config.paths import CONFIG_DIR
+from scripts.utils import get_singular_entity_name, get_table_structure
 from config.database import *
 
 def get_data_file(entity_name: str, path: str='data/silver') -> str:
@@ -152,16 +149,19 @@ def load_all_tables(cur, tables, upload_conn, release_year: int, rating: float):
         print(f"Creating schema for {table['entity']}")
         create_schema_and_index(cur, table, upload_conn, path, release_year, rating)
 
-if __name__ == '__main__':
-    settings = Settings()
+def load_pipelines(connection_string, table_structure_dir, release_year: int=2010, rating: float=100.0):
+    schema_conn, cur = connect_to_database_for_schema_creation(connection_string)
+    upload_conn = connect_to_database_for_data_upload(connection_string)
 
-    schema_conn, cur = connect_to_database_for_schema_creation(settings.get_database_connection_string)
-    upload_conn = connect_to_database_for_data_upload(settings.get_database_connection_string)
+    tables = sorted(get_table_structure(table_structure_dir, 'entity_names.json'), key=lambda x: x['type'])
 
-    tables = sorted(get_table_structure(CONFIG_DIR, 'entity_names.json'), key=lambda x: x['type'])
-
-    load_all_tables(cur, tables, upload_conn, 2010, 100.0)
+    load_all_tables(cur, tables, upload_conn, release_year, rating)
     
     create_active_developers_view(cur)
     create_game_filter_index(cur)
     close_connection_for_schema_creation(schema_conn, cur)
+
+if __name__ == '__main__':
+    settings = Settings()
+
+    load_pipelines(settings.get_database_connection_string, CONFIG_DIR)
