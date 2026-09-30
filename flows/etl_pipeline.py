@@ -30,4 +30,11 @@ def run_etl_pipeline() -> None:
     load(settings.get_database_connection_string, CONFIG_DIR)
 
 if __name__ == '__main__':
-    run_etl_pipeline()
+    run_etl_pipeline.from_source(
+        source='https://github.com/noybcoder/video-game-statistics',
+        entrypoint='flows/etl_pipeline.py:run_etl_pipeline',
+    ).deploy(
+        name='video-game-statistics-pipeline-deployment',
+        work_pool_name='video-game-statistics-managed-pool',
+        cron='* 5 * * *'
+    )
