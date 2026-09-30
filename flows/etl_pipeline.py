@@ -31,7 +31,7 @@ def run_etl_pipeline() -> None:
 
 if __name__ == '__main__':
     flow.from_source(
-        source='https://github.com/noybcoder/video-game-statistics',
+        source='https://github.com/noybcoder/video-game-statistics.git',
         entrypoint='flows/etl_pipeline.py:run_etl_pipeline',
     ).deploy(
         name='video-game-statistics-pipeline-deployment',
