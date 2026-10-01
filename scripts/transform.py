@@ -4,6 +4,7 @@ from typing import Union
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.paths import BRONZE_DIR, SILVER_DIR, CONFIG_DIR
+from config.storage import connect_to_r2_using_httpfs, connect_to_r2_using_boto3
 from scripts.utils import get_singular_entity_name, get_table_structure
 
 ####### Core Functions  #######
@@ -180,4 +181,13 @@ def transform_all_tables(conn, table_structure_dir, source_dir, output_folder):
 if __name__ == '__main__':
     conn = duckdb.connect()
 
-    transform_all_tables(conn, CONFIG_DIR, BRONZE_DIR, SILVER_DIR)
+    # transform_all_tables(conn, CONFIG_DIR, BRONZE_DIR, SILVER_DIR)
+
+    from config.settings import Settings
+    settings = Settings()
+
+    connect_to_r2_using_httpfs(conn, settings.get_r2_secret_credentials)
+
+    s3 = connect_to_r2_using_boto3(settings.get_r2_client_credentials)
+    response = s3.list_objects_v2(Bucket='video-game-statistics')
+    print(response)

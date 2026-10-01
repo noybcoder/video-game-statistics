@@ -8,6 +8,11 @@ class Settings(BaseSettings):
     igdb_client_id: str
     igdb_access_token: str
 
+    r2_account_id: str
+    r2_api_token: str
+    r2_access_key_id: str
+    r2_secret_access_key: str
+
     postgres_database_host: str
     postgres_database_port: int
     postgres_database_user: str
@@ -26,6 +31,25 @@ class Settings(BaseSettings):
             'Client-ID': self.igdb_client_id, 
             'Authorization': f'Bearer {self.igdb_access_token}'
         }
+
+    @property
+    def get_r2_client_credentials(self, service_name: str='s3', region_name: str='auto'):
+        return {
+            'service_name': service_name,
+            'endpoint_url': f'https://{self.r2_account_id}.r2.cloudflarestorage.com',
+            'aws_access_key_id': self.r2_access_key_id,
+            'aws_secret_access_key': self.r2_secret_access_key,
+            'region_name': region_name,
+        }
+
+    @property
+    def get_r2_secret_credentials(self):
+        return f"""
+            TYPE r2,
+            KEY_ID '{self.r2_access_key_id}',
+            SECRET '{self.r2_secret_access_key}',
+            ACCOUNT_ID '{self.r2_account_id}'
+        """
     
     @property
     def get_database_connection_string(self):
