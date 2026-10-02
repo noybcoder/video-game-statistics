@@ -10,6 +10,9 @@ def create_r2_bucket(s3, bucket: str='video-game-statistics'):
         s3.create_bucket(Bucket=bucket)
         print(f"✅ Success! Bucket '{bucket}' created.")
 
+def get_r2_object_metadata(s3, bucket='video-game-statistics'):
+    return s3.list_objects_v2(Bucket=bucket).get('Contents', [])
+
 def serialize_json_data(data):
     return io.BytesIO(json.dumps(data, separators=(',', ':')).encode('utf-8'))
 

@@ -3,8 +3,8 @@ from typing import Union
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config.paths import BRONZE_DIR, SILVER_DIR, CONFIG_DIR
-from config.storage import connect_to_r2_using_httpfs, connect_to_r2_using_boto3
+from config.paths import R2_OBJECT_URL_PREFIX, BRONZE_DIR, SILVER_DIR, CONFIG_DIR
+from config.storage import connect_to_r2_using_httpfs, connect_to_r2_using_boto3, get_r2_object_metadata
 from scripts.utils import get_singular_entity_name, get_table_structure
 
 ####### Core Functions  #######
@@ -90,12 +90,13 @@ def create_core_tables(conn, entity, file_path):
 def get_junction_table_name(primary_entity, secondary_entity):
     return f'{primary_entity}_{secondary_entity}'
 
-def get_latest_file(file_path: str, entity_name: str) -> str:
+def get_latest_file(r2_objects: str, url_prefix: str, entity_name: str) -> str:
     try:
-        files = [os.path.join(file_path, file) for file in os.listdir(file_path) if re.match(f'{entity_name}_raw.*json', file)]
-        return max(files, key=os.path.getctime)
+        files = [obj for obj in r2_objects if re.search(f'.+{entity_name}_raw.+json', obj['Key'])]
+        target_file = max(files, key=lambda x: x['LastModified'])['Key']
+        return f'{url_prefix}/{target_file}'
     except ValueError as e:
-        print(f'Error: ${e}')
+        print(f'Error: {e}')
 
 def get_country_name(country_code: int) -> Union[str, None]:
     try:
@@ -106,8 +107,6 @@ def get_country_name(country_code: int) -> Union[str, None]:
         return None
 
 def save_as_parquet(conn, entity_name, output_folder):
-    os.makedirs(output_folder, exist_ok=True)
-
     conn.execute(f"""
         COPY {entity_name} TO '{output_folder}/{entity_name}.parquet' (FORMAT parquet)
     """)
@@ -164,11 +163,11 @@ def process_junction_tables(conn, schema, entity, file_location, tables):
     for field in schema:
         process_junction_table(conn, schema, entity, field, file_location, tables)
 
-def transform_all_tables(conn, table_structure_dir, source_dir, output_folder):
+def transform_all_tables(conn, r2_objects, table_structure_dir, source_dir, output_folder):
     tables = []
 
     for entity in get_table_structure(table_structure_dir):
-        file_path = get_latest_file(source_dir, entity)
+        file_path = get_latest_file(r2_objects, source_dir, entity)
         create_core_tables(conn, entity, file_path)
         schema = get_schema(conn, entity)
         tables.append(get_table_metadata(conn, entity))
@@ -181,13 +180,11 @@ def transform_all_tables(conn, table_structure_dir, source_dir, output_folder):
 if __name__ == '__main__':
     conn = duckdb.connect()
 
-    # transform_all_tables(conn, CONFIG_DIR, BRONZE_DIR, SILVER_DIR)
-
     from config.settings import Settings
     settings = Settings()
 
     connect_to_r2_using_httpfs(conn, settings.get_r2_secret_credentials)
 
     s3 = connect_to_r2_using_boto3(settings.get_r2_client_credentials)
-    response = s3.list_objects_v2(Bucket='video-game-statistics')
-    print(response)
+    r2_objects = get_r2_object_metadata(s3)
+    transform_all_tables(conn, r2_objects, CONFIG_DIR, R2_OBJECT_URL_PREFIX, SILVER_DIR)
