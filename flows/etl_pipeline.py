@@ -59,7 +59,8 @@ if __name__ == '__main__':
                 "pydantic-settings",
                 "python-dotenv",
                 "requests",
-                "pycountry"
+                "pycountry",
+                "inflect"
             ]
         },
         cron='* 5 * * *'
