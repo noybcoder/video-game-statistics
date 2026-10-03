@@ -13,6 +13,9 @@ def create_r2_bucket(s3, bucket: str='video-game-statistics'):
 def get_r2_object_metadata(s3, bucket='video-game-statistics'):
     return s3.list_objects_v2(Bucket=bucket).get('Contents', [])
 
+def build_r2_url(url_prefix: str, key: str):
+    return f'{url_prefix}/{key}'
+
 def serialize_json_data(data):
     return io.BytesIO(json.dumps(data, separators=(',', ':')).encode('utf-8'))
 

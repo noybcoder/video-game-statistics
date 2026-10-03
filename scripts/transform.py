@@ -3,9 +3,10 @@ from typing import Union
 
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from config.paths import R2_OBJECT_URL_PREFIX, BRONZE_DIR, SILVER_DIR, CONFIG_DIR
-from config.storage import connect_to_r2_using_httpfs, connect_to_r2_using_boto3, get_r2_object_metadata
+from config.paths import R2_OBJECT_URL_PREFIX, SILVER_DIR, CONFIG_DIR
+from config.storage import connect_to_r2_using_httpfs, connect_to_r2_using_boto3, get_r2_object_metadata, build_r2_url
 from scripts.utils import get_singular_entity_name, get_table_structure
+from config.settings import Settings
 
 ####### Core Functions  #######
 def create_direct_link_table(func):
@@ -24,6 +25,7 @@ def create_direct_link_table(func):
                     CROSS JOIN UNNEST(g.data) AS d(data) 
             """, {'path': path})
 
+            print(f'Transformed {entity_name} table.')
             return conn.table(entity_name)
         except duckdb.ParserException as e:
             print(f'Error: {e}')
@@ -40,6 +42,7 @@ def create_junction_table(conn: duckdb.DuckDBPyConnection, first_primary_key: st
                 UNNEST({second_primary_key}) AS {get_singular_entity_name(renamed_second_primary_key)}_id
             FROM {first_primary_key}
     """)
+    print(f'Transformed {table_name} table.')
 
     return conn.table(table_name)
 
@@ -94,7 +97,7 @@ def get_latest_file(r2_objects: str, url_prefix: str, entity_name: str) -> str:
     try:
         files = [obj for obj in r2_objects if re.search(f'.+{entity_name}_raw.+json', obj['Key'])]
         target_file = max(files, key=lambda x: x['LastModified'])['Key']
-        return f'{url_prefix}/{target_file}'
+        return build_r2_url(url_prefix, target_file)
     except ValueError as e:
         print(f'Error: {e}')
 
@@ -106,10 +109,11 @@ def get_country_name(country_code: int) -> Union[str, None]:
         print(f'The country code "{country_code}" is not valid.')
         return None
 
-def save_as_parquet(conn, entity_name, output_folder):
-    conn.execute(f"""
-        COPY {entity_name} TO '{output_folder}/{entity_name}.parquet' (FORMAT parquet)
-    """)
+def save_as_parquet(conn, entity_name, url_prefix, output_folder):
+    file_name = build_r2_url(url_prefix, f'{output_folder}/{entity_name}.parquet')
+
+    conn.execute(f"COPY {entity_name} TO '{file_name}' (FORMAT parquet)")
+    print(f'Created {file_name} in r2.')
 
 def save_table_names(output_folder, content, file_name: str='entity_names.json'):
     os.makedirs(output_folder, exist_ok=True)
@@ -151,40 +155,43 @@ def get_table_metadata(conn, primary_entity, secondary_entity=None, original_pri
 
     return details
 
-def process_junction_table(conn, schema, entity, field, file_location, tables):
+def process_junction_table(conn, schema, entity, field, url_prefix, output_folder, tables):
     if schema[field] == 'INTEGER[]':
         create_junction_table(conn, entity, field)
         junction_table_name = get_junction_table_name(entity, field)
         remove_fields(conn, entity, field)
-        save_as_parquet(conn, junction_table_name, file_location)
+        save_as_parquet(conn, junction_table_name, url_prefix, output_folder)
         tables.append(get_table_metadata(conn, junction_table_name, entity, field))
 
-def process_junction_tables(conn, schema, entity, file_location, tables):
+def process_junction_tables(conn, schema, entity, url_prefix, output_folder, tables):
     for field in schema:
-        process_junction_table(conn, schema, entity, field, file_location, tables)
+        process_junction_table(conn, schema, entity, field, url_prefix, output_folder, tables)
 
-def transform_all_tables(conn, r2_objects, table_structure_dir, source_dir, output_folder):
+def transform_all_tables(conn, r2_objects, table_structure_dir, url_prefix, output_folder):
     tables = []
 
     for entity in get_table_structure(table_structure_dir):
-        file_path = get_latest_file(r2_objects, source_dir, entity)
+        file_path = get_latest_file(r2_objects, url_prefix, entity)
         create_core_tables(conn, entity, file_path)
         schema = get_schema(conn, entity)
         tables.append(get_table_metadata(conn, entity))
 
-        process_junction_tables(conn, schema, entity, output_folder, tables)
+        process_junction_tables(conn, schema, entity, url_prefix, output_folder, tables)
 
-        save_as_parquet(conn, entity, output_folder)
+        save_as_parquet(conn, entity, url_prefix, output_folder)
         save_table_names(table_structure_dir, tables)
+
+def transform_pipelines(conn, secret_credentials, client_credentials, table_structure_dir, url_prefix, output_folder):
+    connect_to_r2_using_httpfs(conn, secret_credentials)
+    s3 = connect_to_r2_using_boto3(client_credentials)
+    r2_objects = get_r2_object_metadata(s3)
+    transform_all_tables(conn, r2_objects, table_structure_dir, url_prefix, output_folder)    
 
 if __name__ == '__main__':
     conn = duckdb.connect()
-
-    from config.settings import Settings
     settings = Settings()
 
-    connect_to_r2_using_httpfs(conn, settings.get_r2_secret_credentials)
-
-    s3 = connect_to_r2_using_boto3(settings.get_r2_client_credentials)
-    r2_objects = get_r2_object_metadata(s3)
-    transform_all_tables(conn, r2_objects, CONFIG_DIR, R2_OBJECT_URL_PREFIX, SILVER_DIR)
+    transform_pipelines(
+        conn, settings.get_r2_secret_credentials, settings.get_r2_client_credentials, 
+        CONFIG_DIR, R2_OBJECT_URL_PREFIX, SILVER_DIR
+    )

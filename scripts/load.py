@@ -3,12 +3,14 @@ import psycopg2, duckdb, os, functools, inspect, sys
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from config.settings import Settings
-from config.paths import CONFIG_DIR
+from config.paths import R2_OBJECT_URL_PREFIX, CONFIG_DIR, SILVER_DIR
 from scripts.utils import get_singular_entity_name, get_table_structure
-from config.database import *
-
-def get_data_file(entity_name: str, path: str='data/silver') -> str:
-    return os.path.join(os.getcwd(), f'{path}/{entity_name}.parquet')
+from config.storage import connect_to_r2_using_httpfs, build_r2_url
+from config.database import (
+    connect_to_database_for_schema_creation,
+    connect_to_database_for_data_upload,
+    close_connection_for_schema_creation,
+)
 
 def create_direct_link_schema(func) -> None:
     @functools.wraps(func)
@@ -142,20 +144,21 @@ def create_schema_and_index(cur, table, upload_conn, path, release_year: int, ra
             print(f"Creating index for {table['entity']}")
             create_junction_index(cur, table)
 
-def load_all_tables(cur, tables, upload_conn, release_year: int, rating: float):
+def load_all_tables(cur, tables, upload_conn, url_prefix, output_folder, release_year: int, rating: float):
     for table in tables:
-        path = os.path.join(os.getcwd(), f"data/silver/{table['entity']}.parquet")
+        path = build_r2_url(url_prefix, f'{output_folder}/{table['entity']}.parquet')
 
         print(f"Creating schema for {table['entity']}")
         create_schema_and_index(cur, table, upload_conn, path, release_year, rating)
 
-def load_pipelines(connection_string, table_structure_dir, release_year: int=2010, rating: float=100.0):
+def load_pipelines(connection_string, upload_conn, credentials, table_structure_dir, url_prefix, output_folder, release_year: int=2010, rating: float=100.0):
     schema_conn, cur = connect_to_database_for_schema_creation(connection_string)
-    upload_conn = connect_to_database_for_data_upload(connection_string)
+    connect_to_database_for_data_upload(connection_string, upload_conn)
+    connect_to_r2_using_httpfs(upload_conn, credentials)
 
     tables = sorted(get_table_structure(table_structure_dir, 'entity_names.json'), key=lambda x: x['type'])
 
-    load_all_tables(cur, tables, upload_conn, release_year, rating)
+    load_all_tables(cur, tables, upload_conn, url_prefix, output_folder, release_year, rating)
     
     create_active_developers_view(cur)
     create_game_filter_index(cur)
@@ -163,5 +166,9 @@ def load_pipelines(connection_string, table_structure_dir, release_year: int=201
 
 if __name__ == '__main__':
     settings = Settings()
+    conn = duckdb.connect()
 
-    load_pipelines(settings.get_database_connection_string, CONFIG_DIR)
+    load_pipelines(
+        settings.get_database_connection_string, conn, settings.get_r2_secret_credentials, 
+        CONFIG_DIR, R2_OBJECT_URL_PREFIX, SILVER_DIR
+    )

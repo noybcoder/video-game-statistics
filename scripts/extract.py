@@ -88,9 +88,15 @@ def extract_all_tables(igdb_credentials, s3, table_structure_dir, output_folder,
     for entity_name, attributes in get_table_structure(table_structure_dir).items():
         data = get_game_data(fields=attributes['fields'], igdb_credentials=igdb_credentials, entity_name=entity_name)
         save_as_json(s3, bucket, data, content_type, entity_name, output_folder)
-        
+
+def extract_pipelines(r2_credentials, igdb_credentials, table_structure_dir, output_folder):
+    s3 = connect_to_r2_using_boto3(r2_credentials)
+    create_r2_bucket(s3)
+    extract_all_tables(igdb_credentials, s3, table_structure_dir, output_folder)
+
 if __name__ == '__main__':
     settings = Settings()
-    s3 = connect_to_r2_using_boto3(settings.get_r2_client_credentials)
-    create_r2_bucket(s3)
-    extract_all_tables(settings.get_igdb_connection_credentials, s3, CONFIG_DIR, BRONZE_DIR)
+    extract_pipelines(
+        settings.get_r2_client_credentials, settings.get_igdb_connection_credentials, 
+        CONFIG_DIR, BRONZE_DIR
+    )

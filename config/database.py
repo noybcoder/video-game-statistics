@@ -33,13 +33,11 @@ def get_database_cursor():
         cur.close()
         connection_pool.putconn(conn)
 
-def connect_to_database_for_data_upload(connection_string, database: str='supabase') -> duckdb.DuckDBPyConnection:
-    conn = duckdb.connect()
-    conn.execute('INSTALL POSTGRES;')
-    conn.execute('LOAD POSTGRES;')
+def connect_to_database_for_data_upload(connection_string, upload_conn, database: str='supabase') -> None:
+    upload_conn.execute('INSTALL POSTGRES;')
+    upload_conn.execute('LOAD POSTGRES;')
 
-    conn.execute(f"ATTACH '{connection_string}' AS {database} (TYPE postgres);")
-    return conn
+    upload_conn.execute(f"ATTACH '{connection_string}' AS {database} (TYPE postgres);")
 
 def close_connection_for_schema_creation(conn: psycopg2.extensions.connection, cur: psycopg2.extensions.cursor):
     cur.close()
