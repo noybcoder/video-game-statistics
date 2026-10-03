@@ -51,5 +51,16 @@ if __name__ == '__main__':
     ).deploy(
         name='video-game-statistics-pipeline-deployment',
         work_pool_name='video-game-statistics-managed-pool',
+        job_variables={
+            "pip_packages": [
+                "duckdb",
+                "boto3",
+                "psycopg2-binary",
+                "pydantic-settings",
+                "python-dotenv",
+                "requests",
+                "pycountry"
+            ]
+        },
         cron='* 5 * * *'
     )
